@@ -2,11 +2,13 @@ import pygame
 
 pygame.init()
 
-win = pygame.display.set_mode((500, 500))
-pygame.display.set_caption("Game ПР17")
+win_width = 800
+win_height = 500
+win = pygame.display.set_mode((win_width, win_height))
+pygame.display.set_caption("Game ПР18")
 
 bg_image = pygame.image.load('bg.jpg')
-bg = pygame.transform.scale(bg_image, (500, 500))
+bg = pygame.transform.scale(bg_image, (win_width, win_height))
 
 score = 0
 font = pygame.font.SysFont('comicsans', 30, True)
@@ -40,12 +42,9 @@ class enemy():
         if self.visible:
             self.move()
             pygame.draw.rect(win, (255, 0, 0), (self.x, self.y, self.width, self.height))
-            
             pygame.draw.rect(win, (255, 0, 0), (self.hitbox[0], self.hitbox[1] - 20, 50, 10))
             pygame.draw.rect(win, (0, 255, 0), (self.hitbox[0], self.hitbox[1] - 20, 50 - (5 * (10 - self.health)), 10))
-            
             self.hitbox = (self.x, self.y, self.width, self.height)
-            pygame.draw.rect(win, (255, 255, 255), self.hitbox, 2)
 
     def move(self):
         if self.vel > 0:
@@ -68,10 +67,9 @@ class enemy():
 def drawWindow():
     win.blit(bg, (0, 0))
     text = font.render("Score: " + str(score), 1, (0, 0, 0))
-    win.blit(text, (380, 10))
+    win.blit(text, (win_width - 150, 10))
     
     pygame.draw.rect(win, (0, 0, 255), (x, y, width, height))
-    pygame.draw.rect(win, (255, 255, 255), (x, y, width, height), 2)
     
     monster.draw(win)
     for bullet in bullets:
@@ -80,7 +78,7 @@ def drawWindow():
     pygame.display.update()
 
 x = 50
-y = 425
+y = 400
 width = 40
 height = 60
 speed = 5
@@ -89,7 +87,7 @@ jumpCount = 10
 lastMove = 1
 bulletCount = 0
 
-monster = enemy(150, 425, 40, 60, 450)
+monster = enemy(200, 400, 40, 60, 750)
 bullets = []
 run = True
 
@@ -99,6 +97,16 @@ while run:
         if event.type == pygame.QUIT:
             run = False
 
+    if monster.visible:
+        if y < monster.hitbox[1] + monster.hitbox[3] and y + height > monster.hitbox[1]:
+            if x + width > monster.hitbox[0] and x < monster.hitbox[0] + monster.hitbox[2]:
+                score -= 5
+                x = 50
+                y = 400
+                isJump = False
+                jumpCount = 10
+                pygame.time.delay(500)
+
     for bullet in bullets:
         if monster.visible:
             if bullet.y - bullet.radius < monster.hitbox[1] + monster.hitbox[3] and bullet.y + bullet.radius > monster.hitbox[1]:
@@ -107,10 +115,11 @@ while run:
                     score += 1
                     bullets.pop(bullets.index(bullet))
 
-        if bullet.x < 500 and bullet.x > 0:
+        if bullet.x < win_width and bullet.x > 0:
             bullet.x += bullet.vel
         else:
-            bullets.pop(bullets.index(bullet))
+            if bullet in bullets:
+                bullets.pop(bullets.index(bullet))
 
     keys = pygame.key.get_pressed()
 
@@ -125,7 +134,7 @@ while run:
     if keys[pygame.K_LEFT] and x > 5:
         x -= speed
         lastMove = -1
-    elif keys[pygame.K_RIGHT] and x < 500 - width - 5:
+    elif keys[pygame.K_RIGHT] and x < win_width - width - 5:
         x += speed
         lastMove = 1
 
