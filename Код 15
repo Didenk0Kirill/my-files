@@ -1,72 +1,87 @@
 import pygame
 
 pygame.init()
-
 win = pygame.display.set_mode((500, 500))
-pygame.display.set_caption("Game 3 - ПР15 Shooting")
+pygame.display.set_caption("Game 4 - ПР16 Enemy")
 
-# Завантаження фону
+# Фон
 bg_image = pygame.image.load('bg.jpg')
 bg = pygame.transform.scale(bg_image, (500, 500))
 
-x = 50
-y = 425
-width = 40
-height = 60
-speed = 5
-
-isJump = False
-jumpCount = 10
-
-# Змінна для визначення напрямку останнього руху (1 - вправо, -1 - вліво)
-lastMove = 1 
-
-# Клас снаряда
-class snaryad():
-    def __init__(self, x, y, radius, color, facing):
+# Клас ворога
+class enemy():
+    def __init__(self, x, y, width, height, end):
         self.x = x
         self.y = y
-        self.radius = radius
-        self.color = color
-        self.facing = facing
-        self.vel = 8 * facing # Швидкість польоту снаряда
+        self.width = width
+        self.height = height
+        self.end = end # Кінцева точка маршруту
+        self.path = [x, end] # Початкова та кінцева точки
+        self.vel = 3 # Швидкість ворога
 
+    def draw(self, win):
+        self.move()
+        # Малюємо ворога (червоний квадрат)
+        pygame.draw.rect(win, (255, 0, 0), (self.x, self.y, self.width, self.height))
+
+    def move(self):
+        # Логіка руху туди-сюди
+        if self.vel > 0: # Рух вправо
+            if self.x + self.vel < self.path[1]:
+                self.x += self.vel
+            else:
+                self.vel = self.vel * -1 # Зміна напрямку
+        else: # Рух вліво
+            if self.x - self.vel > self.path[0]:
+                self.x += self.vel
+            else:
+                self.vel = self.vel * -1
+
+# Дані гравця
+x, y, width, height, speed = 50, 425, 40, 60, 5
+isJump, jumpCount = False, 10
+lastMove = 1
+bulletCount = 0
+
+# Створюємо об'єкт ворога (початок x=100, кінець x=400)
+monster = enemy(100, 425, 40, 60, 400)
+
+# Клас снаряда (як у ПР15)
+class snaryad():
+    def __init__(self, x, y, radius, color, facing):
+        self.x, self.y, self.radius, self.color, self.facing = x, y, radius, color, facing
+        self.vel = 8 * facing
     def draw(self, win):
         pygame.draw.circle(win, self.color, (self.x, self.y), self.radius)
 
 def drawWindow():
     win.blit(bg, (0, 0))
-    # Малюємо гравця
+    # Малюємо гравця (синій)
     pygame.draw.rect(win, (0, 0, 255), (x, y, width, height))
-    
-    # Малюємо всі снаряди зі списку
+    # Малюємо ворога
+    monster.draw(win)
+    # Малюємо снаряди
     for bullet in bullets:
         bullet.draw(win)
-        
     pygame.display.update()
 
-bullets = [] # Список для збереження об'єктів-снарядів
+bullets = []
 run = True
 while run:
     pygame.time.delay(30)
-
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            run = False
+        if event.type == pygame.QUIT: run = False
 
-    # Логіка польоту снарядів: видаляємо, якщо вилетіли за екран
     for bullet in bullets:
-        if bullet.x < 500 and bullet.x > 0:
-            bullet.x += bullet.vel
-        else:
-            bullets.pop(bullets.index(bullet))
+        if bullet.x < 500 and bullet.x > 0: bullet.x += bullet.vel
+        else: bullets.pop(bullets.index(bullet))
 
     keys = pygame.key.get_pressed()
-
-    # Стрільба на клавішу F
-    if keys[pygame.K_f]:
-        if len(bullets) < 5: # Обмеження кількості снарядів на екрані
-            bullets.append(snaryad(round(x + width // 2), round(y + height // 2), 5, (255, 0, 0), lastMove))
+    if keys[pygame.K_f] and bulletCount == 0:
+        if len(bullets) < 10:
+            bullets.append(snaryad(round(x + width // 2), round(y + height // 2), 5, (255, 255, 0), lastMove))
+            bulletCount = 5
+    if bulletCount > 0: bulletCount -= 1
 
     if keys[pygame.K_LEFT] and x > 5:
         x -= speed
@@ -75,20 +90,16 @@ while run:
         x += speed
         lastMove = 1
 
+    # Логіка стрибка
     if not (isJump):
-        if keys[pygame.K_SPACE]:
-            isJump = True
+        if keys[pygame.K_SPACE]: isJump = True
     else:
         if jumpCount >= -10:
-            if jumpCount < 0:
-                y += (jumpCount ** 2) / 2
-            else:
-                y -= (jumpCount ** 2) / 2
+            if jumpCount < 0: y += (jumpCount ** 2) / 2
+            else: y -= (jumpCount ** 2) / 2
             jumpCount -= 1
         else:
-            isJump = False
-            jumpCount = 10
+            isJump, jumpCount = False, 10
 
     drawWindow()
-
 pygame.quit()
