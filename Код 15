@@ -1,13 +1,28 @@
 import pygame
 
 pygame.init()
+
 win = pygame.display.set_mode((500, 500))
-pygame.display.set_caption("ПР №16 - Hitboxes")
+pygame.display.set_caption("Game ПР17")
 
 bg_image = pygame.image.load('bg.jpg')
 bg = pygame.transform.scale(bg_image, (500, 500))
 
-# Клас ворога з хітбоксом
+score = 0
+font = pygame.font.SysFont('comicsans', 30, True)
+
+class snaryad():
+    def __init__(self, x, y, radius, color, facing):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.color = color
+        self.facing = facing
+        self.vel = 8 * facing
+
+    def draw(self, win):
+        pygame.draw.circle(win, self.color, (self.x, self.y), self.radius)
+
 class enemy():
     def __init__(self, x, y, width, height, end):
         self.x = x
@@ -17,16 +32,20 @@ class enemy():
         self.end = end
         self.path = [x, end]
         self.vel = 3
-        # Хітбокс ворога: (x, y, ширина, висота)
         self.hitbox = (self.x, self.y, self.width, self.height)
+        self.health = 10
+        self.visible = True
 
     def draw(self, win):
-        self.move()
-        pygame.draw.rect(win, (255, 0, 0), (self.x, self.y, self.width, self.height))
-        # Оновлюємо координати хітбокса ворога
-        self.hitbox = (self.x, self.y, self.width, self.height)
-        # Малюємо білу рамку хітбокса (для перевірки)
-        pygame.draw.rect(win, (255, 255, 255), self.hitbox, 2)
+        if self.visible:
+            self.move()
+            pygame.draw.rect(win, (255, 0, 0), (self.x, self.y, self.width, self.height))
+            
+            pygame.draw.rect(win, (255, 0, 0), (self.hitbox[0], self.hitbox[1] - 20, 50, 10))
+            pygame.draw.rect(win, (0, 255, 0), (self.hitbox[0], self.hitbox[1] - 20, 50 - (5 * (10 - self.health)), 10))
+            
+            self.hitbox = (self.x, self.y, self.width, self.height)
+            pygame.draw.rect(win, (255, 255, 255), self.hitbox, 2)
 
     def move(self):
         if self.vel > 0:
@@ -40,56 +59,53 @@ class enemy():
             else:
                 self.vel *= -1
 
-# Клас снаряда
-class snaryad():
-    def __init__(self, x, y, radius, color, facing):
-        self.x, self.y, self.radius, self.color, self.facing = x, y, radius, color, facing
-        self.vel = 8 * facing
-    def draw(self, win):
-        pygame.draw.circle(win, self.color, (self.x, self.y), self.radius)
-
-# Дані гравця
-x, y, width, height, speed = 50, 425, 40, 60, 5
-isJump, jumpCount = False, 10
-lastMove = 1
-bulletCount = 0
-# Хітбокс гравця (початковий)
-player_hitbox = (x, y, width, height)
-
-monster = enemy(150, 425, 40, 60, 450)
-bullets = []
+    def hit(self):
+        if self.health > 0:
+            self.health -= 1
+        else:
+            self.visible = False
 
 def drawWindow():
     win.blit(bg, (0, 0))
+    text = font.render("Score: " + str(score), 1, (0, 0, 0))
+    win.blit(text, (380, 10))
     
-    # Малюємо гравця
     pygame.draw.rect(win, (0, 0, 255), (x, y, width, height))
-    # Оновлюємо та малюємо хітбокс гравця
-    global player_hitbox
-    player_hitbox = (x, y, width, height)
-    pygame.draw.rect(win, (255, 255, 255), player_hitbox, 2)
+    pygame.draw.rect(win, (255, 255, 255), (x, y, width, height), 2)
     
     monster.draw(win)
-    
     for bullet in bullets:
         bullet.draw(win)
-        
+    
     pygame.display.update()
 
+x = 50
+y = 425
+width = 40
+height = 60
+speed = 5
+isJump = False
+jumpCount = 10
+lastMove = 1
+bulletCount = 0
+
+monster = enemy(150, 425, 40, 60, 450)
+bullets = []
 run = True
+
 while run:
     pygame.time.delay(30)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
 
-    # Логіка куль та влучання у ворога
     for bullet in bullets:
-        # Перевірка зіткнення кулі з хітбоксом ворога
-        if bullet.y - bullet.radius < monster.hitbox[1] + monster.hitbox[3] and bullet.y + bullet.radius > monster.hitbox[1]:
-            if bullet.x + bullet.radius > monster.hitbox[0] and bullet.x - bullet.radius < monster.hitbox[0] + monster.hitbox[2]:
-                bullets.pop(bullets.index(bullet))
-                print("Влучив у ворога!")
+        if monster.visible:
+            if bullet.y - bullet.radius < monster.hitbox[1] + monster.hitbox[3] and bullet.y + bullet.radius > monster.hitbox[1]:
+                if bullet.x + bullet.radius > monster.hitbox[0] and bullet.x - bullet.radius < monster.hitbox[0] + monster.hitbox[2]:
+                    monster.hit()
+                    score += 1
+                    bullets.pop(bullets.index(bullet))
 
         if bullet.x < 500 and bullet.x > 0:
             bullet.x += bullet.vel
@@ -97,13 +113,14 @@ while run:
             bullets.pop(bullets.index(bullet))
 
     keys = pygame.key.get_pressed()
-    
-    # Стрільба (зажим)
+
     if keys[pygame.K_f] and bulletCount == 0:
         if len(bullets) < 10:
             bullets.append(snaryad(round(x + width // 2), round(y + height // 2), 5, (255, 255, 0), lastMove))
             bulletCount = 5
-    if bulletCount > 0: bulletCount -= 1
+
+    if bulletCount > 0:
+        bulletCount -= 1
 
     if keys[pygame.K_LEFT] and x > 5:
         x -= speed
@@ -113,14 +130,18 @@ while run:
         lastMove = 1
 
     if not (isJump):
-        if keys[pygame.K_SPACE]: isJump = True
+        if keys[pygame.K_SPACE]:
+            isJump = True
     else:
         if jumpCount >= -10:
-            if jumpCount < 0: y += (jumpCount ** 2) / 2
-            else: y -= (jumpCount ** 2) / 2
+            if jumpCount < 0:
+                y += (jumpCount ** 2) / 2
+            else:
+                y -= (jumpCount ** 2) / 2
             jumpCount -= 1
         else:
-            isJump, jumpCount = False, 10
+            isJump = False
+            jumpCount = 10
 
     drawWindow()
 
