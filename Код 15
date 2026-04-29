@@ -6,91 +6,163 @@ pygame.init()
 win_width = 600
 win_height = 450
 win = pygame.display.set_mode((win_width, win_height))
-pygame.display.set_caption("Space Battle: Meteors & Asteroids")
+pygame.display.set_caption("Space Battle - PR19: Combat System")
 
 bg = pygame.image.load('bg.jpg')
 bg = pygame.transform.scale(bg, (win_width, win_height))
 
+score = 0
+font = pygame.font.SysFont('arial', 26, True)
+
 class Player:
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, radius):
         self.x = x
         self.y = y
-        self.width = width
-        self.height = height
+        self.radius = radius
         self.vel = 7
-        self.hitbox = (self.x, self.y, self.width, self.height)
+        self.hitbox = (self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
 
     def draw(self, win):
-        pygame.draw.rect(win, (0, 255, 0), (self.x, self.y, self.width, self.height))
-        self.hitbox = (self.x, self.y, self.width, self.height)
+        pygame.draw.circle(win, (0, 255, 0), (self.x, self.y), self.radius)
+        self.hitbox = (self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
+
+class Bullet:
+    def __init__(self, x, y, radius, color):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.color = color
+        self.vel = 10
+
+    def draw(self, win):
+        pygame.draw.circle(win, self.color, (self.x, self.y), self.radius)
 
 class Meteor:
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, radius):
         self.x = x
         self.y = y
-        self.width = width
-        self.height = height
-        self.vel = random.randint(3, 6) # Швидкість падіння
-        self.hitbox = (self.x, self.y, self.width, self.height)
+        self.radius = radius
+        self.vel = random.randint(4, 7)
+        self.hitbox = (self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
 
     def draw(self, win):
         self.move()
-        pygame.draw.rect(win, (200, 200, 200), (self.x, self.y, self.width, self.height))
-        self.hitbox = (self.x, self.y, self.width, self.height)
+        pygame.draw.circle(win, (200, 200, 200), (self.x, self.y), self.radius)
+        self.hitbox = (self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
 
     def move(self):
-        if self.y < win_height:
-            self.y += self.vel # Рух вниз
-        else:
-            self.y = -50 # Повернення вгору
-            self.x = random.randint(0, win_width - self.width)
-
-class Asteroid:
-    def __init__(self, x, y, width, height):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.vel = random.randint(1, 3) # Астероїди повільніші
-        self.hitbox = (self.x, self.y, self.width, self.height)
-
-    def draw(self, win):
-        self.move()
-        pygame.draw.rect(win, (100, 100, 100), (self.x, self.y, self.width, self.height))
-        self.hitbox = (self.x, self.y, self.width, self.height)
-
-    def move(self):
-        if self.y < win_height:
+        if self.y < win_height + self.radius:
             self.y += self.vel
         else:
-            self.y = -100
-            self.x = random.randint(0, win_width - self.width)
+            self.respawn()
 
-# Створення об'єктів
-spaceship = Player(270, 380, 60, 40)
-m1 = Meteor(random.randint(0, 550), -50, 40, 40)
-a1 = Asteroid(random.randint(0, 550), -150, 60, 60)
+    def respawn(self):
+        self.y = -50
+        self.x = random.randint(self.radius, win_width - self.radius)
+
+class Asteroid:
+    def __init__(self, x, y, radius):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.vel = random.randint(2, 4)
+        self.hitbox = (self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
+
+    def draw(self, win):
+        self.move()
+        pygame.draw.circle(win, (100, 100, 100), (self.x, self.y), self.radius)
+        self.hitbox = (self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
+
+    def move(self):
+        if self.y < win_height + self.radius:
+            self.y += self.vel
+        else:
+            self.respawn()
+            
+    def respawn(self):
+        self.y = -100
+        self.x = random.randint(self.radius, win_width - self.radius)
 
 def redrawGameWindow():
     win.blit(bg, (0, 0))
+    # Виведення очок
+    score_text = font.render("Score: " + str(score), 1, (255, 255, 255))
+    win.blit(score_text, (10, 10))
+    
     spaceship.draw(win)
     m1.draw(win)
     a1.draw(win)
+    for bullet in bullets:
+        bullet.draw(win)
     pygame.display.update()
+
+# Створення об'єктів
+spaceship = Player(300, 400, 25)
+m1 = Meteor(random.randint(20, 580), -50, 15) # Малий (більше очок)
+a1 = Asteroid(random.randint(40, 560), -150, 35) # Великий (менше очок)
+bullets = []
+shoot_loop = 0 # Затримка стрільби
 
 run = True
 while run:
     pygame.time.delay(30)
+    
+    # Обмеження частоти стрільби
+    if shoot_loop > 0:
+        shoot_loop += 1
+    if shoot_loop > 10:
+        shoot_loop = 0
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
 
+    # Перевірка зіткнення ворогів з гравцем
+    for enemy in [m1, a1]:
+        if (enemy.hitbox[1] + enemy.hitbox[3] > spaceship.hitbox[1] and 
+            enemy.hitbox[1] < spaceship.hitbox[1] + spaceship.hitbox[3]):
+            if (enemy.hitbox[0] + enemy.hitbox[2] > spaceship.hitbox[0] and 
+                enemy.hitbox[0] < spaceship.hitbox[0] + spaceship.hitbox[2]):
+                print("YOU CRASHED!")
+                run = False # Кінець гри
+
+    # Логіка куль
+    for bullet in bullets:
+        # Перевірка влучання в метеор (малий)
+        if (bullet.y - bullet.radius < m1.hitbox[1] + m1.hitbox[3] and bullet.y + bullet.radius > m1.hitbox[1]):
+            if (bullet.x + bullet.radius > m1.hitbox[0] and bullet.x - bullet.radius < m1.hitbox[0] + m1.hitbox[2]):
+                score += 15 # +15 за малий
+                m1.respawn()
+                bullets.pop(bullets.index(bullet))
+                continue
+
+        # Перевірка влучання в астероїд (великий)
+        if (bullet.y - bullet.radius < a1.hitbox[1] + a1.hitbox[3] and bullet.y + bullet.radius > a1.hitbox[1]):
+            if (bullet.x + bullet.radius > a1.hitbox[0] and bullet.x - bullet.radius < a1.hitbox[0] + a1.hitbox[2]):
+                score += 5 # +5 за великий
+                a1.respawn()
+                bullets.pop(bullets.index(bullet))
+                continue
+
+        # Рух кулі вгору
+        if bullet.y > 0:
+            bullet.y -= bullet.vel
+        else:
+            bullets.pop(bullets.index(bullet))
+
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT] and spaceship.x > spaceship.vel:
+    
+    # Стрільба на Space або F
+    if keys[pygame.K_SPACE] and shoot_loop == 0:
+        bullets.append(Bullet(spaceship.x, spaceship.y, 5, (255, 255, 0)))
+        shoot_loop = 1
+
+    if keys[pygame.K_LEFT] and spaceship.x > spaceship.radius:
         spaceship.x -= spaceship.vel
-    elif keys[pygame.K_RIGHT] and spaceship.x < win_width - spaceship.width - spaceship.vel:
+    if keys[pygame.K_RIGHT] and spaceship.x < win_width - spaceship.radius:
         spaceship.x += spaceship.vel
 
     redrawGameWindow()
 
 pygame.quit()
+
