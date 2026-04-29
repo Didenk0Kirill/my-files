@@ -1,157 +1,96 @@
 import pygame
+import random
 
 pygame.init()
 
-win_width = 800
-win_height = 500
+win_width = 600
+win_height = 450
 win = pygame.display.set_mode((win_width, win_height))
-pygame.display.set_caption("Game ПР18")
+pygame.display.set_caption("Space Battle: Meteors & Asteroids")
 
-bg_image = pygame.image.load('bg.jpg')
-bg = pygame.transform.scale(bg_image, (win_width, win_height))
+bg = pygame.image.load('bg.jpg')
+bg = pygame.transform.scale(bg, (win_width, win_height))
 
-score = 0
-font = pygame.font.SysFont('comicsans', 30, True)
-
-class snaryad():
-    def __init__(self, x, y, radius, color, facing):
-        self.x = x
-        self.y = y
-        self.radius = radius
-        self.color = color
-        self.facing = facing
-        self.vel = 8 * facing
-
-    def draw(self, win):
-        pygame.draw.circle(win, self.color, (self.x, self.y), self.radius)
-
-class enemy():
-    def __init__(self, x, y, width, height, end):
+class Player:
+    def __init__(self, x, y, width, height):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.end = end
-        self.path = [x, end]
-        self.vel = 3
+        self.vel = 7
         self.hitbox = (self.x, self.y, self.width, self.height)
-        self.health = 10
-        self.visible = True
 
     def draw(self, win):
-        if self.visible:
-            self.move()
-            pygame.draw.rect(win, (255, 0, 0), (self.x, self.y, self.width, self.height))
-            pygame.draw.rect(win, (255, 0, 0), (self.hitbox[0], self.hitbox[1] - 20, 50, 10))
-            pygame.draw.rect(win, (0, 255, 0), (self.hitbox[0], self.hitbox[1] - 20, 50 - (5 * (10 - self.health)), 10))
-            self.hitbox = (self.x, self.y, self.width, self.height)
+        pygame.draw.rect(win, (0, 255, 0), (self.x, self.y, self.width, self.height))
+        self.hitbox = (self.x, self.y, self.width, self.height)
+
+class Meteor:
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.vel = random.randint(3, 6) # Швидкість падіння
+        self.hitbox = (self.x, self.y, self.width, self.height)
+
+    def draw(self, win):
+        self.move()
+        pygame.draw.rect(win, (200, 200, 200), (self.x, self.y, self.width, self.height))
+        self.hitbox = (self.x, self.y, self.width, self.height)
 
     def move(self):
-        if self.vel > 0:
-            if self.x + self.vel < self.path[1]:
-                self.x += self.vel
-            else:
-                self.vel *= -1
+        if self.y < win_height:
+            self.y += self.vel # Рух вниз
         else:
-            if self.x - self.vel > self.path[0]:
-                self.x += self.vel
-            else:
-                self.vel *= -1
+            self.y = -50 # Повернення вгору
+            self.x = random.randint(0, win_width - self.width)
 
-    def hit(self):
-        if self.health > 0:
-            self.health -= 1
+class Asteroid:
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.vel = random.randint(1, 3) # Астероїди повільніші
+        self.hitbox = (self.x, self.y, self.width, self.height)
+
+    def draw(self, win):
+        self.move()
+        pygame.draw.rect(win, (100, 100, 100), (self.x, self.y, self.width, self.height))
+        self.hitbox = (self.x, self.y, self.width, self.height)
+
+    def move(self):
+        if self.y < win_height:
+            self.y += self.vel
         else:
-            self.visible = False
+            self.y = -100
+            self.x = random.randint(0, win_width - self.width)
 
-def drawWindow():
+# Створення об'єктів
+spaceship = Player(270, 380, 60, 40)
+m1 = Meteor(random.randint(0, 550), -50, 40, 40)
+a1 = Asteroid(random.randint(0, 550), -150, 60, 60)
+
+def redrawGameWindow():
     win.blit(bg, (0, 0))
-    text = font.render("Score: " + str(score), 1, (0, 0, 0))
-    win.blit(text, (win_width - 150, 10))
-    
-    pygame.draw.rect(win, (0, 0, 255), (x, y, width, height))
-    
-    monster.draw(win)
-    for bullet in bullets:
-        bullet.draw(win)
-    
+    spaceship.draw(win)
+    m1.draw(win)
+    a1.draw(win)
     pygame.display.update()
 
-x = 50
-y = 400
-width = 40
-height = 60
-speed = 5
-isJump = False
-jumpCount = 10
-lastMove = 1
-bulletCount = 0
-
-monster = enemy(200, 400, 40, 60, 750)
-bullets = []
 run = True
-
 while run:
     pygame.time.delay(30)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
 
-    if monster.visible:
-        if y < monster.hitbox[1] + monster.hitbox[3] and y + height > monster.hitbox[1]:
-            if x + width > monster.hitbox[0] and x < monster.hitbox[0] + monster.hitbox[2]:
-                score -= 5
-                x = 50
-                y = 400
-                isJump = False
-                jumpCount = 10
-                pygame.time.delay(500)
-
-    for bullet in bullets:
-        if monster.visible:
-            if bullet.y - bullet.radius < monster.hitbox[1] + monster.hitbox[3] and bullet.y + bullet.radius > monster.hitbox[1]:
-                if bullet.x + bullet.radius > monster.hitbox[0] and bullet.x - bullet.radius < monster.hitbox[0] + monster.hitbox[2]:
-                    monster.hit()
-                    score += 1
-                    bullets.pop(bullets.index(bullet))
-
-        if bullet.x < win_width and bullet.x > 0:
-            bullet.x += bullet.vel
-        else:
-            if bullet in bullets:
-                bullets.pop(bullets.index(bullet))
-
     keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT] and spaceship.x > spaceship.vel:
+        spaceship.x -= spaceship.vel
+    elif keys[pygame.K_RIGHT] and spaceship.x < win_width - spaceship.width - spaceship.vel:
+        spaceship.x += spaceship.vel
 
-    if keys[pygame.K_f] and bulletCount == 0:
-        if len(bullets) < 10:
-            bullets.append(snaryad(round(x + width // 2), round(y + height // 2), 5, (255, 255, 0), lastMove))
-            bulletCount = 5
-
-    if bulletCount > 0:
-        bulletCount -= 1
-
-    if keys[pygame.K_LEFT] and x > 5:
-        x -= speed
-        lastMove = -1
-    elif keys[pygame.K_RIGHT] and x < win_width - width - 5:
-        x += speed
-        lastMove = 1
-
-    if not (isJump):
-        if keys[pygame.K_SPACE]:
-            isJump = True
-    else:
-        if jumpCount >= -10:
-            if jumpCount < 0:
-                y += (jumpCount ** 2) / 2
-            else:
-                y -= (jumpCount ** 2) / 2
-            jumpCount -= 1
-        else:
-            isJump = False
-            jumpCount = 10
-
-    drawWindow()
+    redrawGameWindow()
 
 pygame.quit()
