@@ -6,7 +6,7 @@ pygame.init()
 win_width = 600
 win_height = 450
 win = pygame.display.set_mode((win_width, win_height))
-pygame.display.set_caption("Space Battle - PR19: Combat System")
+pygame.display.set_caption("Space Battle - PR19: Hidden HP System")
 
 bg = pygame.image.load('bg.jpg')
 bg = pygame.transform.scale(bg, (win_width, win_height))
@@ -43,6 +43,7 @@ class Meteor:
         self.y = y
         self.radius = radius
         self.vel = random.randint(4, 7)
+        self.hp = 2  # Потрібно 2 влучання
         self.hitbox = (self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
 
     def draw(self, win):
@@ -59,6 +60,7 @@ class Meteor:
     def respawn(self):
         self.y = -50
         self.x = random.randint(self.radius, win_width - self.radius)
+        self.hp = 2 # Відновлюємо HP при респавні
 
 class Asteroid:
     def __init__(self, x, y, radius):
@@ -66,6 +68,7 @@ class Asteroid:
         self.y = y
         self.radius = radius
         self.vel = random.randint(2, 4)
+        self.hp = 5  # Потрібно 5 влучань
         self.hitbox = (self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
 
     def draw(self, win):
@@ -82,10 +85,10 @@ class Asteroid:
     def respawn(self):
         self.y = -100
         self.x = random.randint(self.radius, win_width - self.radius)
+        self.hp = 5 # Відновлюємо HP при респавні
 
 def redrawGameWindow():
     win.blit(bg, (0, 0))
-    # Виведення очок
     score_text = font.render("Score: " + str(score), 1, (255, 255, 255))
     win.blit(score_text, (10, 10))
     
@@ -96,18 +99,16 @@ def redrawGameWindow():
         bullet.draw(win)
     pygame.display.update()
 
-# Створення об'єктів
 spaceship = Player(300, 400, 25)
-m1 = Meteor(random.randint(20, 580), -50, 15) # Малий (більше очок)
-a1 = Asteroid(random.randint(40, 560), -150, 35) # Великий (менше очок)
+m1 = Meteor(random.randint(20, 580), -50, 15)
+a1 = Asteroid(random.randint(40, 560), -150, 35)
 bullets = []
-shoot_loop = 0 # Затримка стрільби
+shoot_loop = 0
 
 run = True
 while run:
     pygame.time.delay(30)
     
-    # Обмеження частоти стрільби
     if shoot_loop > 0:
         shoot_loop += 1
     if shoot_loop > 10:
@@ -117,34 +118,36 @@ while run:
         if event.type == pygame.QUIT:
             run = False
 
-    # Перевірка зіткнення ворогів з гравцем
+    # Перевірка зіткнення з гравцем
     for enemy in [m1, a1]:
         if (enemy.hitbox[1] + enemy.hitbox[3] > spaceship.hitbox[1] and 
             enemy.hitbox[1] < spaceship.hitbox[1] + spaceship.hitbox[3]):
             if (enemy.hitbox[0] + enemy.hitbox[2] > spaceship.hitbox[0] and 
                 enemy.hitbox[0] < spaceship.hitbox[0] + spaceship.hitbox[2]):
-                print("YOU CRASHED!")
-                run = False # Кінець гри
+                run = False 
 
-    # Логіка куль
+    # Логіка куль та прихованого HP
     for bullet in bullets:
-        # Перевірка влучання в метеор (малий)
+        # Влучання в метеор (m1)
         if (bullet.y - bullet.radius < m1.hitbox[1] + m1.hitbox[3] and bullet.y + bullet.radius > m1.hitbox[1]):
             if (bullet.x + bullet.radius > m1.hitbox[0] and bullet.x - bullet.radius < m1.hitbox[0] + m1.hitbox[2]):
-                score += 15 # +15 за малий
-                m1.respawn()
+                m1.hp -= 1 # Віднімаємо життя
                 bullets.pop(bullets.index(bullet))
+                if m1.hp <= 0: # Тільки якщо HP закінчилось
+                    score += 15
+                    m1.respawn()
                 continue
 
-        # Перевірка влучання в астероїд (великий)
+        # Влучання в астероїд (a1)
         if (bullet.y - bullet.radius < a1.hitbox[1] + a1.hitbox[3] and bullet.y + bullet.radius > a1.hitbox[1]):
             if (bullet.x + bullet.radius > a1.hitbox[0] and bullet.x - bullet.radius < a1.hitbox[0] + a1.hitbox[2]):
-                score += 5 # +5 за великий
-                a1.respawn()
+                a1.hp -= 1 # Віднімаємо життя
                 bullets.pop(bullets.index(bullet))
+                if a1.hp <= 0: # Тільки якщо HP закінчилось
+                    score += 5
+                    a1.respawn()
                 continue
 
-        # Рух кулі вгору
         if bullet.y > 0:
             bullet.y -= bullet.vel
         else:
@@ -152,7 +155,6 @@ while run:
 
     keys = pygame.key.get_pressed()
     
-    # Стрільба на Space або F
     if keys[pygame.K_SPACE] and shoot_loop == 0:
         bullets.append(Bullet(spaceship.x, spaceship.y, 5, (255, 255, 0)))
         shoot_loop = 1
@@ -165,4 +167,3 @@ while run:
     redrawGameWindow()
 
 pygame.quit()
-
