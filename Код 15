@@ -3,25 +3,25 @@ import random
 
 pygame.init()
 
-win_width = 600
-win_height = 450
+win_width = 450
+win_height = 800
 win = pygame.display.set_mode((win_width, win_height))
-pygame.display.set_caption("Space Battle - PR19")
+pygame.display.set_caption("Space Battle Mobile")
 
 bg = pygame.image.load('bg.jpg')
 bg = pygame.transform.scale(bg, (win_width, win_height))
 
 player_img = pygame.image.load('spaceship.png').convert_alpha()
-player_img = pygame.transform.scale(player_img, (50, 50))
+player_img = pygame.transform.scale(player_img, (60, 60))
 
 meteor_img = pygame.image.load('meteorite.png').convert_alpha()
-meteor_img = pygame.transform.scale(meteor_img, (30, 30))
+meteor_img = pygame.transform.scale(meteor_img, (40, 40))
 
 asteroid_img = pygame.image.load('asteroid.png').convert_alpha()
-asteroid_img = pygame.transform.scale(asteroid_img, (70, 70))
+asteroid_img = pygame.transform.scale(asteroid_img, (80, 80))
 
 score = 0
-font = pygame.font.SysFont('arial', 26, True)
+font = pygame.font.SysFont('arial', 30, True)
 
 class Player:
     def __init__(self, x, y, width, height, img):
@@ -30,12 +30,17 @@ class Player:
         self.width = width
         self.height = height
         self.img = img
-        self.vel = 7
+        self.vel = 8
+        self.hp = 3
         self.hitbox = (self.x, self.y, self.width, self.height)
 
     def draw(self, win):
         win.blit(self.img, (self.x, self.y))
         self.hitbox = (self.x, self.y, self.width, self.height)
+        
+        pygame.draw.rect(win, (255, 0, 0), (20, 20, 150, 20))
+        if self.hp > 0:
+            pygame.draw.rect(win, (0, 255, 0), (20, 20, 50 * self.hp, 20))
 
 class Bullet:
     def __init__(self, x, y, radius, color):
@@ -43,7 +48,7 @@ class Bullet:
         self.y = y
         self.radius = radius
         self.color = color
-        self.vel = 10
+        self.vel = 12
 
     def draw(self, win):
         pygame.draw.circle(win, self.color, (self.x, self.y), self.radius)
@@ -55,7 +60,7 @@ class Meteor:
         self.width = width
         self.height = height
         self.img = img
-        self.vel = random.randint(4, 7)
+        self.vel = random.randint(5, 9)
         self.hp = 2
         self.hitbox = (self.x, self.y, self.width, self.height)
 
@@ -71,7 +76,7 @@ class Meteor:
             self.respawn()
 
     def respawn(self):
-        self.y = -50
+        self.y = -100
         self.x = random.randint(0, win_width - self.width)
         self.hp = 2
 
@@ -82,7 +87,7 @@ class Asteroid:
         self.width = width
         self.height = height
         self.img = img
-        self.vel = random.randint(2, 4)
+        self.vel = random.randint(3, 5)
         self.hp = 5
         self.hitbox = (self.x, self.y, self.width, self.height)
 
@@ -98,14 +103,15 @@ class Asteroid:
             self.respawn()
             
     def respawn(self):
-        self.y = -100
+        self.y = -200
         self.x = random.randint(0, win_width - self.width)
         self.hp = 5
 
 def redrawGameWindow():
     win.blit(bg, (0, 0))
-    score_text = font.render("Очки: " + str(score), 1, (255, 255, 255))
-    win.blit(score_text, (10, 10))
+    
+    score_text = font.render(str(score), 1, (255, 255, 255))
+    win.blit(score_text, (win_width//2 - score_text.get_width()//2, 20))
     
     ship.draw(win)
     m1.draw(win)
@@ -114,11 +120,12 @@ def redrawGameWindow():
         bullet.draw(win)
     pygame.display.update()
 
-ship = Player(275, 380, 50, 50, player_img)
-m1 = Meteor(random.randint(0, 570), -50, 30, 30, meteor_img)
-a1 = Asteroid(random.randint(0, 530), -150, 70, 70, asteroid_img)
+ship = Player(win_width//2 - 30, win_height - 100, 60, 60, player_img)
+m1 = Meteor(random.randint(0, win_width-40), -100, 40, 40, meteor_img)
+a1 = Asteroid(random.randint(0, win_width-80), -300, 80, 80, asteroid_img)
 bullets = []
 shoot_loop = 0
+collision_timer = 0
 
 run = True
 while run:
@@ -126,8 +133,13 @@ while run:
     
     if shoot_loop > 0:
         shoot_loop += 1
-    if shoot_loop > 10:
+    if shoot_loop > 8:
         shoot_loop = 0
+        
+    if collision_timer > 0:
+        collision_timer += 1
+    if collision_timer > 30:
+        collision_timer = 0
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -138,13 +150,18 @@ while run:
             enemy.hitbox[1] < ship.hitbox[1] + ship.hitbox[3]):
             if (enemy.hitbox[0] + enemy.hitbox[2] > ship.hitbox[0] and 
                 enemy.hitbox[0] < ship.hitbox[0] + ship.hitbox[2]):
-                run = False 
+                if collision_timer == 0:
+                    ship.hp -= 1
+                    collision_timer = 1
+                    enemy.respawn()
+                    if ship.hp <= 0:
+                        run = False 
 
     for bullet in bullets[:]:
         if (bullet.y < m1.hitbox[1] + m1.hitbox[3] and bullet.y > m1.hitbox[1]):
             if (bullet.x > m1.hitbox[0] and bullet.x < m1.hitbox[0] + m1.hitbox[2]):
                 m1.hp -= 1
-                bullets.remove(bullet)
+                if bullet in bullets: bullets.remove(bullet)
                 if m1.hp <= 0:
                     score += 15
                     m1.respawn()
@@ -153,7 +170,7 @@ while run:
         if (bullet.y < a1.hitbox[1] + a1.hitbox[3] and bullet.y > a1.hitbox[1]):
             if (bullet.x > a1.hitbox[0] and bullet.x < a1.hitbox[0] + a1.hitbox[2]):
                 a1.hp -= 1
-                bullets.remove(bullet)
+                if bullet in bullets: bullets.remove(bullet)
                 if a1.hp <= 0:
                     score += 5
                     a1.respawn()
@@ -162,7 +179,7 @@ while run:
         if bullet.y > 0:
             bullet.y -= bullet.vel
         else:
-            bullets.remove(bullet)
+            if bullet in bullets: bullets.remove(bullet)
 
     keys = pygame.key.get_pressed()
     
