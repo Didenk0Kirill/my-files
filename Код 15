@@ -20,8 +20,8 @@ meteor_img = pygame.transform.scale(meteor_img, (40, 40))
 asteroid_img = pygame.image.load('asteroid.png').convert_alpha()
 asteroid_img = pygame.transform.scale(asteroid_img, (80, 80))
 
-score = 0
-font = pygame.font.SysFont('arial', 30, True)
+font_big = pygame.font.SysFont('arial', 40, True)
+font_small = pygame.font.SysFont('arial', 26, True)
 
 class Player:
     def __init__(self, x, y, width, height, img):
@@ -37,7 +37,6 @@ class Player:
     def draw(self, win):
         win.blit(self.img, (self.x, self.y))
         self.hitbox = (self.x, self.y, self.width, self.height)
-        
         pygame.draw.rect(win, (255, 0, 0), (20, 20, 150, 20))
         if self.hp > 0:
             pygame.draw.rect(win, (0, 255, 0), (20, 20, 50 * self.hp, 20))
@@ -107,12 +106,47 @@ class Asteroid:
         self.x = random.randint(0, win_width - self.width)
         self.hp = 5
 
+def game_over_screen():
+    waiting = True
+    while waiting:
+        win.blit(bg, (0, 0))
+        msg = font_big.render("ВИ РОЗБИЛИСЯ!", 1, (255, 50, 50))
+        win.blit(msg, (win_width//2 - msg.get_width()//2, 200))
+        
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+        
+        btn_play_rect = (win_width//2 - 100, 350, 200, 50)
+        if btn_play_rect[0] < mouse[0] < btn_play_rect[0] + 200 and btn_play_rect[1] < mouse[1] < btn_play_rect[1] + 50:
+            pygame.draw.rect(win, (50, 255, 50), btn_play_rect)
+            if click[0] == 1:
+                return "retry"
+        else:
+            pygame.draw.rect(win, (0, 200, 0), btn_play_rect)
+        
+        play_txt = font_small.render("ГРАТИ ЗНОВУ", 1, (255, 255, 255))
+        win.blit(play_txt, (win_width//2 - play_txt.get_width()//2, 360))
+
+        btn_exit_rect = (win_width//2 - 100, 430, 200, 50)
+        if btn_exit_rect[0] < mouse[0] < btn_exit_rect[0] + 200 and btn_exit_rect[1] < mouse[1] < btn_exit_rect[1] + 50:
+            pygame.draw.rect(win, (255, 50, 50), btn_exit_rect)
+            if click[0] == 1:
+                return "exit"
+        else:
+            pygame.draw.rect(win, (200, 0, 0), btn_exit_rect)
+            
+        exit_txt = font_small.render("ВИЙТИ", 1, (255, 255, 255))
+        win.blit(exit_txt, (win_width//2 - exit_txt.get_width()//2, 440))
+
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "exit"
+
 def redrawGameWindow():
     win.blit(bg, (0, 0))
-    
-    score_text = font.render(str(score), 1, (255, 255, 255))
+    score_text = font_small.render(str(score), 1, (255, 255, 255))
     win.blit(score_text, (win_width//2 - score_text.get_width()//2, 20))
-    
     ship.draw(win)
     m1.draw(win)
     a1.draw(win)
@@ -120,78 +154,74 @@ def redrawGameWindow():
         bullet.draw(win)
     pygame.display.update()
 
-ship = Player(win_width//2 - 30, win_height - 100, 60, 60, player_img)
-m1 = Meteor(random.randint(0, win_width-40), -100, 40, 40, meteor_img)
-a1 = Asteroid(random.randint(0, win_width-80), -300, 80, 80, asteroid_img)
-bullets = []
-shoot_loop = 0
-collision_timer = 0
-
-run = True
-while run:
-    pygame.time.delay(30)
+main_run = True
+while main_run:
+    score = 0
+    ship = Player(win_width//2 - 30, win_height - 100, 60, 60, player_img)
+    m1 = Meteor(random.randint(0, win_width-40), -100, 40, 40, meteor_img)
+    a1 = Asteroid(random.randint(0, win_width-80), -300, 80, 80, asteroid_img)
+    bullets = []
+    shoot_loop = 0
+    collision_timer = 0
     
-    if shoot_loop > 0:
-        shoot_loop += 1
-    if shoot_loop > 8:
-        shoot_loop = 0
-        
-    if collision_timer > 0:
-        collision_timer += 1
-    if collision_timer > 30:
-        collision_timer = 0
+    game_run = True
+    while game_run:
+        pygame.time.delay(30)
+        if shoot_loop > 0: shoot_loop += 1
+        if shoot_loop > 8: shoot_loop = 0
+        if collision_timer > 0: collision_timer += 1
+        if collision_timer > 30: collision_timer = 0
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            run = False
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game_run = False
+                main_run = False
 
-    for enemy in [m1, a1]:
-        if (enemy.hitbox[1] + enemy.hitbox[3] > ship.hitbox[1] and 
-            enemy.hitbox[1] < ship.hitbox[1] + ship.hitbox[3]):
-            if (enemy.hitbox[0] + enemy.hitbox[2] > ship.hitbox[0] and 
-                enemy.hitbox[0] < ship.hitbox[0] + ship.hitbox[2]):
-                if collision_timer == 0:
-                    ship.hp -= 1
-                    collision_timer = 1
-                    enemy.respawn()
-                    if ship.hp <= 0:
-                        run = False 
+        for enemy in [m1, a1]:
+            if (enemy.hitbox[1] + enemy.hitbox[3] > ship.hitbox[1] and 
+                enemy.hitbox[1] < ship.hitbox[1] + ship.hitbox[3]):
+                if (enemy.hitbox[0] + enemy.hitbox[2] > ship.hitbox[0] and 
+                    enemy.hitbox[0] < ship.hitbox[0] + ship.hitbox[2]):
+                    if collision_timer == 0:
+                        ship.hp -= 1
+                        collision_timer = 1
+                        enemy.respawn()
+                        if ship.hp <= 0:
+                            game_run = False 
 
-    for bullet in bullets[:]:
-        if (bullet.y < m1.hitbox[1] + m1.hitbox[3] and bullet.y > m1.hitbox[1]):
-            if (bullet.x > m1.hitbox[0] and bullet.x < m1.hitbox[0] + m1.hitbox[2]):
-                m1.hp -= 1
+        for bullet in bullets[:]:
+            if (bullet.y < m1.hitbox[1] + m1.hitbox[3] and bullet.y > m1.hitbox[1]):
+                if (bullet.x > m1.hitbox[0] and bullet.x < m1.hitbox[0] + m1.hitbox[2]):
+                    m1.hp -= 1
+                    if bullet in bullets: bullets.remove(bullet)
+                    if m1.hp <= 0:
+                        score += 15
+                        m1.respawn()
+                    continue
+            if (bullet.y < a1.hitbox[1] + a1.hitbox[3] and bullet.y > a1.hitbox[1]):
+                if (bullet.x > a1.hitbox[0] and bullet.x < a1.hitbox[0] + a1.hitbox[2]):
+                    a1.hp -= 1
+                    if bullet in bullets: bullets.remove(bullet)
+                    if a1.hp <= 0:
+                        score += 5
+                        a1.respawn()
+                    continue
+            if bullet.y > 0: bullet.y -= bullet.vel
+            else: 
                 if bullet in bullets: bullets.remove(bullet)
-                if m1.hp <= 0:
-                    score += 15
-                    m1.respawn()
-                continue
 
-        if (bullet.y < a1.hitbox[1] + a1.hitbox[3] and bullet.y > a1.hitbox[1]):
-            if (bullet.x > a1.hitbox[0] and bullet.x < a1.hitbox[0] + a1.hitbox[2]):
-                a1.hp -= 1
-                if bullet in bullets: bullets.remove(bullet)
-                if a1.hp <= 0:
-                    score += 5
-                    a1.respawn()
-                continue
+        keys = pygame.key.get_pressed()
+        if (keys[pygame.K_SPACE] or keys[pygame.K_f]) and shoot_loop == 0:
+            bullets.append(Bullet(ship.x + ship.width // 2, ship.y, 5, (255, 255, 0)))
+            shoot_loop = 1
+        if keys[pygame.K_LEFT] and ship.x > 0: ship.x -= ship.vel
+        if keys[pygame.K_RIGHT] and ship.x < win_width - ship.width: ship.x += ship.vel
 
-        if bullet.y > 0:
-            bullet.y -= bullet.vel
-        else:
-            if bullet in bullets: bullets.remove(bullet)
+        redrawGameWindow()
 
-    keys = pygame.key.get_pressed()
-    
-    if (keys[pygame.K_SPACE] or keys[pygame.K_f]) and shoot_loop == 0:
-        bullets.append(Bullet(ship.x + ship.width // 2, ship.y, 5, (255, 255, 0)))
-        shoot_loop = 1
-
-    if keys[pygame.K_LEFT] and ship.x > 0:
-        ship.x -= ship.vel
-    if keys[pygame.K_RIGHT] and ship.x < win_width - ship.width:
-        ship.x += ship.vel
-
-    redrawGameWindow()
+    if main_run:
+        choice = game_over_screen()
+        if choice == "exit":
+            main_run = False
 
 pygame.quit()
