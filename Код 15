@@ -1,189 +1,129 @@
 import pygame
-import random
 
 pygame.init()
 
-win_width = 450
-win_height = 800
+win_width = 500
+win_height = 480
 win = pygame.display.set_mode((win_width, win_height))
-pygame.display.set_caption("Space Battle Mobile")
+pygame.display.set_caption("PR 13-17: Goblin Respawn")
 
 bg = pygame.image.load('bg.jpg')
 bg = pygame.transform.scale(bg, (win_width, win_height))
 
-player_img = pygame.image.load('spaceship.png').convert_alpha()
-player_img = pygame.transform.scale(player_img, (60, 60))
-
-meteor_img = pygame.image.load('meteorite.png').convert_alpha()
-meteor_img = pygame.transform.scale(meteor_img, (40, 40))
-
-asteroid_img = pygame.image.load('asteroid.png').convert_alpha()
-asteroid_img = pygame.transform.scale(asteroid_img, (80, 80))
-
-font_big = pygame.font.SysFont('arial', 40, True)
-font_small = pygame.font.SysFont('arial', 26, True)
-
 class Player:
-    def __init__(self, x, y, width, height, img):
+    def __init__(self, x, y, width, height):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.img = img
-        self.vel = 8
-        self.hp = 3
-        self.hitbox = (self.x, self.y, self.width, self.height)
+        self.vel = 5
+        self.hitbox = (self.x + 10, self.y + 10, 40, 40)
 
     def draw(self, win):
-        win.blit(self.img, (self.x, self.y))
-        self.hitbox = (self.x, self.y, self.width, self.height)
-        pygame.draw.rect(win, (255, 0, 0), (20, 20, 150, 20))
-        if self.hp > 0:
-            pygame.draw.rect(win, (0, 255, 0), (20, 20, 50 * self.hp, 20))
+        pygame.draw.rect(win, (0, 255, 0), (self.x, self.y, self.width, self.height))
+        self.hitbox = (self.x + 10, self.y + 10, 40, 40)
 
-class Bullet:
+class Enemy:
+    def __init__(self, x, y, width, height, end):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.end = end
+        self.path = [self.x, self.end]
+        self.vel = 3
+        self.health = 10
+        self.visible = True
+        self.hitbox = (self.x + 10, self.y, 40, 60)
+
+    def draw(self, win):
+        if self.visible:
+            self.move()
+            pygame.draw.rect(win, (255, 0, 0), (self.x, self.y, self.width, self.height))
+            
+            # Малювання смужки HP (зелена поверх червоної)
+            pygame.draw.rect(win, (255, 0, 0), (self.hitbox[0], self.hitbox[1] - 20, 50, 10))
+            pygame.draw.rect(win, (0, 255, 0), (self.hitbox[0], self.hitbox[1] - 20, 5 * self.health, 10))
+            
+            self.hitbox = (self.x + 10, self.y, 40, 60)
+
+    def move(self):
+        if self.vel > 0:
+            if self.x + self.vel < self.path[1]:
+                self.x += self.vel
+            else:
+                self.vel = self.vel * -1
+        else:
+            if self.x - self.vel > self.path[0]:
+                self.x += self.vel
+            else:
+                self.vel = self.vel * -1
+
+    def respawn(self):
+        self.x = self.path[0] # Повертаємо гобліна на початкову точку x
+        self.health = 10      # Відновлюємо здоров'я до максимуму
+        self.visible = True   # Робимо його знову видимим
+
+class Projectile:
     def __init__(self, x, y, radius, color):
         self.x = x
         self.y = y
         self.radius = radius
         self.color = color
-        self.vel = 12
+        self.vel = 8
 
     def draw(self, win):
         pygame.draw.circle(win, self.color, (self.x, self.y), self.radius)
 
-class Enemy:
-    def __init__(self, width, height, img, hp, score_val, vel_range):
-        self.width = width
-        self.height = height
-        self.img = img
-        self.x = random.randint(0, win_width - self.width)
-        self.y = random.randint(-600, -100)
-        self.hp = hp
-        self.max_hp = hp
-        self.score_val = score_val
-        self.vel = random.randint(vel_range[0], vel_range[1])
-        self.hitbox = (self.x, self.y, self.width, self.height)
-
-    def draw(self, win):
-        self.y += self.vel
-        win.blit(self.img, (self.x, self.y))
-        self.hitbox = (self.x, self.y, self.width, self.height)
-
-def game_over_screen():
-    while True:
-        win.blit(bg, (0, 0))
-        msg = font_big.render("ВИ РОЗБИЛИСЯ!", 1, (255, 50, 50))
-        win.blit(msg, (win_width//2 - msg.get_width()//2, 200))
-        
-        mouse = pygame.mouse.get_pos()
-        click = pygame.mouse.get_pressed()
-        
-        btn_play = (win_width//2 - 100, 350, 200, 50)
-        if btn_play[0] < mouse[0] < btn_play[0] + 200 and btn_play[1] < mouse[1] < btn_play[1] + 50:
-            pygame.draw.rect(win, (50, 255, 50), btn_play)
-            if click[0] == 1: return "retry"
-        else:
-            pygame.draw.rect(win, (0, 200, 0), btn_play)
-        
-        win.blit(font_small.render("ГРАТИ ЗНОВУ", 1, (255, 255, 255)), (win_width//2 - 80, 360))
-
-        btn_exit = (win_width//2 - 100, 430, 200, 50)
-        if btn_exit[0] < mouse[0] < btn_exit[0] + 200 and btn_exit[1] < mouse[1] < btn_exit[1] + 50:
-            pygame.draw.rect(win, (255, 50, 50), btn_exit)
-            if click[0] == 1: return "exit"
-        else:
-            pygame.draw.rect(win, (200, 0, 0), btn_exit)
-            
-        win.blit(font_small.render("ВИЙТИ", 1, (255, 255, 255)), (win_width//2 - 40, 440))
-
-        pygame.display.update()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT: return "exit"
-
 def redrawGameWindow():
     win.blit(bg, (0, 0))
-    score_txt = font_small.render(str(score), 1, (255, 255, 255))
-    win.blit(score_txt, (win_width//2 - score_txt.get_width()//2, 20))
-    ship.draw(win)
-    for e in enemies: e.draw(win)
-    for b in bullets: b.draw(win)
+    hero.draw(win)
+    goblin.draw(win) # Малюємо нашого гобліна
+    for bullet in bullets:
+        bullet.draw(win)
     pygame.display.update()
 
-main_run = True
-while main_run:
-    score = 0
-    ship = Player(win_width//2 - 30, win_height - 100, 60, 60, player_img)
-    enemies = []
-    bullets = []
-    shoot_loop = 0
-    collision_timer = 0
-    wave_timer = 0
+hero = Player(225, 410, 60, 60)
+goblin = Enemy(50, 410, 60, 60, 450) # Створення об'єкта goblin
+bullets = []
+
+run = True
+while run:
+    pygame.time.delay(30)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run = False
+
+    for bullet in bullets[:]:
+        # Перевірка влучання кулі саме в гобліна
+        if goblin.visible:
+            if bullet.y - bullet.radius < goblin.hitbox[1] + goblin.hitbox[3] and bullet.y + bullet.radius > goblin.hitbox[1]:
+                if bullet.x + bullet.radius > goblin.hitbox[0] and bullet.x - bullet.radius < goblin.hitbox[0] + goblin.hitbox[2]:
+                    
+                    goblin.health -= 1
+                    if bullet in bullets:
+                        bullets.remove(bullet)
+                    
+                    if goblin.health <= 0:
+                        goblin.respawn() # Виклик респавну після смерті гобліна
+
+        if bullet.x < 500 and bullet.x > 0:
+            bullet.x += bullet.vel
+        else:
+            if bullet in bullets:
+                bullets.remove(bullet)
+
+    keys = pygame.key.get_pressed()
     
-    game_run = True
-    while game_run:
-        pygame.time.delay(30)
-        if shoot_loop > 0: shoot_loop += 1
-        if shoot_loop > 8: shoot_loop = 0
-        if collision_timer > 0: collision_timer += 1
-        if collision_timer > 30: collision_timer = 0
-        
-        wave_timer += 1
-        if wave_timer > 60:
-            wave_timer = 0
-            mode = random.choice(["meteors", "asteroids", "both"])
-            count = random.randint(2, 4)
-            for _ in range(count):
-                if mode == "meteors":
-                    enemies.append(Enemy(40, 40, meteor_img, 2, 15, (5, 9)))
-                elif mode == "asteroids":
-                    enemies.append(Enemy(80, 80, asteroid_img, 5, 5, (3, 5)))
-                else:
-                    if random.random() > 0.5:
-                        enemies.append(Enemy(40, 40, meteor_img, 2, 15, (5, 9)))
-                    else:
-                        enemies.append(Enemy(80, 80, asteroid_img, 5, 5, (3, 5)))
+    if keys[pygame.K_SPACE]:
+        if len(bullets) < 5:
+            bullets.append(Projectile(round(hero.x + hero.width // 2), round(hero.y + hero.height // 2), 6, (0, 0, 0)))
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                game_run = False
-                main_run = False
+    if keys[pygame.K_LEFT] and hero.x > hero.vel:
+        hero.x -= hero.vel
+    if keys[pygame.K_RIGHT] and hero.x < win_width - hero.width - hero.vel:
+        hero.x += hero.vel
 
-        for e in enemies[:]:
-            if (e.hitbox[1] + e.hitbox[3] > ship.hitbox[1] and e.hitbox[1] < ship.hitbox[1] + ship.hitbox[3]):
-                if (e.hitbox[0] + e.hitbox[2] > ship.hitbox[0] and e.hitbox[0] < ship.hitbox[0] + ship.hitbox[2]):
-                    if collision_timer == 0:
-                        ship.hp -= 1
-                        collision_timer = 1
-                        enemies.remove(e)
-                        if ship.hp <= 0: game_run = False 
-            if e.y > win_height: enemies.remove(e)
-
-        for b in bullets[:]:
-            hit = False
-            for e in enemies[:]:
-                if (b.y < e.hitbox[1] + e.hitbox[3] and b.y > e.hitbox[1] and b.x > e.hitbox[0] and b.x < e.hitbox[0] + e.hitbox[2]):
-                    e.hp -= 1
-                    bullets.remove(b)
-                    hit = True
-                    if e.hp <= 0:
-                        score += e.score_val
-                        enemies.remove(e)
-                    break
-            if not hit:
-                if b.y > 0: b.y -= b.vel
-                else: bullets.remove(b)
-
-        keys = pygame.key.get_pressed()
-        if (keys[pygame.K_SPACE] or keys[pygame.K_f]) and shoot_loop == 0:
-            bullets.append(Bullet(ship.x + ship.width // 2, ship.y, 5, (255, 255, 0)))
-            shoot_loop = 1
-        if keys[pygame.K_LEFT] and ship.x > 0: ship.x -= ship.vel
-        if keys[pygame.K_RIGHT] and ship.x < win_width - ship.width: ship.x += ship.vel
-
-        redrawGameWindow()
-
-    if main_run:
-        if game_over_screen() == "exit": main_run = False
+    redrawGameWindow()
 
 pygame.quit()
