@@ -6,13 +6,11 @@ import random
 pygame.init()
 font.init()
 
-# Налаштування вікна
 win_width, win_height = 700, 500
 window = display.set_mode((win_width, win_height))
-display.set_caption("Space Battle: WASD Edition")
+display.set_caption("Space Battle: Strong Enemy")
 clock = time.Clock()
 
-# Шрифти
 font_main = font.SysFont('Arial', 24)
 font_big = font.SysFont('Arial', 70)
 
@@ -22,18 +20,14 @@ RED = (255, 0, 0)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
-# Базовий клас для спрайтів
 class GameSprite(sprite.Sprite):
     def __init__(self, img, x, y, w, h, speed):
         super().__init__()
-        # Якщо немає картинок, код видасть помилку. 
-        # Можна замінити на Surface((w, h)), якщо файлів немає під рукою.
         try:
             self.image = transform.scale(image.load(img), (w, h))
         except:
             self.image = Surface((w, h))
-            self.image.fill(GREEN)
-            
+            self.image.fill((200, 200, 0)) # Жовтий колір, якщо немає картинки
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -42,7 +36,6 @@ class GameSprite(sprite.Sprite):
     def reset(self):
         window.blit(self.image, (self.rect.x, self.rect.y))
 
-# Клас Гравця
 class Player(GameSprite):
     def __init__(self, img, x, y, w, h, speed):
         super().__init__(img, x, y, w, h, speed)
@@ -51,137 +44,82 @@ class Player(GameSprite):
 
     def update(self):
         keys = key.get_pressed()
-        # Керування WASD
         if keys[K_a] and self.rect.x > 5:
             self.rect.x -= self.speed
         if keys[K_d] and self.rect.x < win_width - self.rect.width:
             self.rect.x += self.speed
-        if keys[K_w] and self.rect.y > 5:
-            self.rect.y -= self.speed
-        if keys[K_s] and self.rect.y < win_height - self.rect.height:
-            self.rect.y += self.speed
             
     def fire(self):
         bullet = Bullet('bullet.png', self.rect.centerx - 7, self.rect.top, 15, 20, -10)
         player_bullets.add(bullet)
 
-# Клас Ворога
 class Enemy(GameSprite):
     def __init__(self, img, x, y, w, h, speed):
         super().__init__(img, x, y, w, h, speed)
-        self.hp = 3
+        self.max_hp = random.randint(5, 7) # Випадкова витривалість від 5 до 7
+        self.hp = self.max_hp
 
     def update(self):
         self.rect.x += self.speed
-        # Відбивання від стінок
         if self.rect.x > win_width - self.rect.width or self.rect.x < 0:
             self.speed *= -1
 
-# Клас Кулі
 class Bullet(GameSprite):
     def update(self):
         self.rect.y += self.speed
         if self.rect.y < -20 or self.rect.y > win_height + 20:
             self.kill()
 
-# Функція малювання здоров'я
 def draw_hp_bar(x, y, current_hp, max_hp):
     bar_width = 70
+    # Розрахунок довжини смужки відносно максимального HP
     fill = (current_hp / max_hp) * bar_width
     outline_rect = Rect(x, y, bar_width, 8)
     fill_rect = Rect(x, y, fill, 8)
     draw.rect(window, RED, outline_rect)
     draw.rect(window, GREEN, fill_rect)
 
-# Створення об'єктів
+# Об'єкти
 player = Player('rocket.png', 320, 400, 60, 60, 7)
 enemy = Enemy('ufo.png', 100, 50, 60, 60, 4)
-
 player_bullets = sprite.Group()
 enemy_bullets = sprite.Group()
 
-# Головні змінні
 last_enemy_shot = time.get_ticks()
 finish = False
 run = True
 
-# Ігровий цикл
 while run:
     for e in event.get():
         if e.type == QUIT:
             run = False
-        
         if e.type == KEYDOWN:
             if e.key == K_SPACE and not finish:
                 player.fire()
-            
             if finish:
-                if e.key == K_r: # Рестарт
+                if e.key == K_r:
                     player.hp = 5
                     player.points = 0
-                    player.rect.x, player.rect.y = 320, 400
-                    enemy.hp = 3
+                    player.rect.x = 320
+                    enemy.max_hp = random.randint(5, 7)
+                    enemy.hp = enemy.max_hp
                     player_bullets.empty()
                     enemy_bullets.empty()
                     finish = False
-                if e.key == K_q: # Вихід
+                if e.key == K_q:
                     run = False
 
     if not finish:
-        window.fill((30, 30, 40)) # Фон
-
-        # Логіка руху
+        window.fill((30, 30, 40))
         player.update()
         enemy.update()
         player_bullets.update()
         enemy_bullets.update()
 
-        # Автоматична стрільба ворога (черга)
-        now = time.get_ticks()
-        if now - last_enemy_shot > 1200: # стріляє кожні 1.2 сек
+        # Постріл ворога
+        if time.get_ticks() - last_enemy_shot > 1200:
             bull = Bullet('bullet.png', enemy.rect.centerx - 7, enemy.rect.bottom, 15, 20, 6)
             enemy_bullets.add(bull)
-            last_enemy_shot = now
+            last_enemy_shot = time.get_ticks()
 
-        # Перевірка влучань у ворога
-        if sprite.spritecollide(enemy, player_bullets, True):
-            enemy.hp -= 1
-            if enemy.hp <= 0:
-                player.points += 1
-                enemy.hp = 3 # Відродження
-                enemy.rect.x = random.randint(0, win_width - 60)
-
-        # Перевірка влучань у гравця
-        if sprite.spritecollide(player, enemy_bullets, True):
-            player.hp -= 1
-            if player.hp <= 0:
-                finish = True
-
-        # Малювання
-        player_bullets.draw(window)
-        enemy_bullets.draw(window)
-        player.reset()
-        enemy.reset()
-
-        # UI (Очки та HP)
-        draw_hp_bar(player.rect.x, player.rect.y + 65, player.hp, 5)
-        draw_hp_bar(enemy.rect.x, enemy.rect.y - 15, enemy.hp, 3)
-        
-        score_txt = font_main.render(f"Очки: {player.points}", True, WHITE)
-        window.blit(score_txt, (10, 10))
-
-    else:
-        # Екран поразки
-        window.fill(BLACK)
-        txt_lose = font_big.render("GAME OVER", True, RED)
-        txt_score = font_main.render(f"Твій рахунок: {player.points}", True, WHITE)
-        txt_help = font_main.render("R - Грати знову | Q - Вийти", True, GREEN)
-        
-        window.blit(txt_lose, (win_width//2 - 180, win_height//2 - 80))
-        window.blit(txt_score, (win_width//2 - 60, win_height//2 + 10))
-        window.blit(txt_help, (win_width//2 - 130, win_height//2 + 60))
-
-    display.update()
-    clock.tick(60)
-
-pygame.quit()
+        # Влучання у воро
