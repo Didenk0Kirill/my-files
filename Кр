@@ -8,7 +8,7 @@ font.init()
 
 win_width, win_height = 700, 500
 window = display.set_mode((win_width, win_height))
-display.set_caption("Space Battle: Strong Enemy")
+display.set_caption("Space Battle: Rapid Fire")
 clock = time.Clock()
 
 font_main = font.SysFont('Arial', 24)
@@ -27,7 +27,7 @@ class GameSprite(sprite.Sprite):
             self.image = transform.scale(image.load(img), (w, h))
         except:
             self.image = Surface((w, h))
-            self.image.fill((200, 200, 0)) # Жовтий колір, якщо немає картинки
+            self.image.fill((200, 200, 0))
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -56,7 +56,7 @@ class Player(GameSprite):
 class Enemy(GameSprite):
     def __init__(self, img, x, y, w, h, speed):
         super().__init__(img, x, y, w, h, speed)
-        self.max_hp = random.randint(5, 7) # Випадкова витривалість від 5 до 7
+        self.max_hp = random.randint(5, 7)
         self.hp = self.max_hp
 
     def update(self):
@@ -72,7 +72,6 @@ class Bullet(GameSprite):
 
 def draw_hp_bar(x, y, current_hp, max_hp):
     bar_width = 70
-    # Розрахунок довжини смужки відносно максимального HP
     fill = (current_hp / max_hp) * bar_width
     outline_rect = Rect(x, y, bar_width, 8)
     fill_rect = Rect(x, y, fill, 8)
@@ -116,23 +115,22 @@ while run:
         player_bullets.update()
         enemy_bullets.update()
 
-        # Постріл ворога
-        if time.get_ticks() - last_enemy_shot > 1200:
-            bull = Bullet('bullet.png', enemy.rect.centerx - 7, enemy.rect.bottom, 15, 20, 6)
+        # ШВИДКА СТРІЛЬБА ВОРОГА
+        # Змінено затримку на 500мс (півсекунди)
+        if time.get_ticks() - last_enemy_shot > 500: 
+            bull = Bullet('bullet.png', enemy.rect.centerx - 7, enemy.rect.bottom, 15, 20, 8)
             enemy_bullets.add(bull)
             last_enemy_shot = time.get_ticks()
 
-        # Влучання у ворога
+        # Коллізії
         if sprite.spritecollide(enemy, player_bullets, True):
             enemy.hp -= 1
             if enemy.hp <= 0:
                 player.points += 1
-                # Створюємо "нового" сильнішого ворога
                 enemy.max_hp = random.randint(5, 7)
                 enemy.hp = enemy.max_hp
                 enemy.rect.x = random.randint(0, win_width - 60)
 
-        # Влучання в гравця
         if sprite.spritecollide(player, enemy_bullets, True):
             player.hp -= 1
             if player.hp <= 0:
@@ -143,7 +141,6 @@ while run:
         player.reset()
         enemy.reset()
         
-        # Малюємо смужки здоров'я
         draw_hp_bar(player.rect.x, player.rect.y + 65, player.hp, 5)
         draw_hp_bar(enemy.rect.x, enemy.rect.y - 15, enemy.hp, enemy.max_hp)
         
