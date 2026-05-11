@@ -122,4 +122,39 @@ while run:
             enemy_bullets.add(bull)
             last_enemy_shot = time.get_ticks()
 
-        # Влучання у воро
+        # Влучання у ворога
+        if sprite.spritecollide(enemy, player_bullets, True):
+            enemy.hp -= 1
+            if enemy.hp <= 0:
+                player.points += 1
+                # Створюємо "нового" сильнішого ворога
+                enemy.max_hp = random.randint(5, 7)
+                enemy.hp = enemy.max_hp
+                enemy.rect.x = random.randint(0, win_width - 60)
+
+        # Влучання в гравця
+        if sprite.spritecollide(player, enemy_bullets, True):
+            player.hp -= 1
+            if player.hp <= 0:
+                finish = True
+
+        player_bullets.draw(window)
+        enemy_bullets.draw(window)
+        player.reset()
+        enemy.reset()
+        
+        # Малюємо смужки здоров'я
+        draw_hp_bar(player.rect.x, player.rect.y + 65, player.hp, 5)
+        draw_hp_bar(enemy.rect.x, enemy.rect.y - 15, enemy.hp, enemy.max_hp)
+        
+        window.blit(font_main.render(f"Очки: {player.points}", True, WHITE), (10, 10))
+    else:
+        window.fill(BLACK)
+        window.blit(font_big.render("GAME OVER", True, RED), (win_width//2 - 180, win_height//2 - 80))
+        window.blit(font_main.render(f"Рахунок: {player.points}", True, WHITE), (win_width//2 - 60, win_height//2 + 10))
+        window.blit(font_main.render("R - Рестарт | Q - Вихід", True, GREEN), (win_width//2 - 130, win_height//2 + 60))
+
+    display.update()
+    clock.tick(60)
+
+pygame.quit()
